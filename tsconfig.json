@@ -17,11 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [],
     "paths": {
       "@/*": [
         "./*"
@@ -29,8 +25,9 @@
     },
     "types": [
       "node",
-      "@cloudflare/workers-types"
-    ]
+      "vite/client"
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
@@ -42,6 +39,9 @@
   ],
   "exclude": [
     "node_modules",
-    "examples"
+    "examples",
+    "outputs",
+    "dist",
+    "build"
   ]
 }
