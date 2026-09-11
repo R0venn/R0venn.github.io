@@ -63,3 +63,8 @@ export function storageError(error: unknown): string {
   return error instanceof Error ? error.message : 'Stockage local indisponible. Votre saisie est conservée.';
 }
 
+
+export async function replaceRecords(records: HistoryRecord[]) {
+  const valid=records.map(record=>recordSchema.parse(record));
+  await write(store=>{store.clear();for(const record of valid)store.put(record);});
+}

@@ -1,64 +1,41 @@
-# Carnet d’histoire — stockage local et GitHub Pages
+# Carnet d’histoire — dossiers locaux
 
-Cette version est une application statique React/Vite. Aucun compte ChatGPT, serveur, API, D1 ou R2 n’est nécessaire. Les fiches, événements, règnes et photos restent dans IndexedDB sur l’appareil, dans le navigateur utilisé. GitHub Pages héberge uniquement les fichiers de l’application : les fiches saisies ne sont pas envoyées à GitHub.
+Aucun compte ni stockage distant. L’application utilise un dossier choisi sur l’appareil, contenant le fichier **carnet-histoire.json** (fiches, événements, règnes et photos embarquées).
 
-## Sauvegarder et transférer le carnet
+## Ouvrir, mémoriser et changer de dossier
 
-Utiliser **Exporter une sauvegarde** pour télécharger un fichier JSON contenant toutes les fiches et photos. Sur l’autre appareil, ouvrir le même site puis **Importer une sauvegarde**. L’import ajoute les nouvelles fiches et remplace celles ayant le même identifiant, après confirmation. Les autres fiches sont conservées. Un fichier invalide est refusé intégralement.
+- Cliquer sur **Choisir un dossier**. Un dossier existant charge son carnet ; un dossier vide ouvre un carnet vide. Les autres fichiers ne sont pas modifiés.
+- Le navigateur mémorise la référence au dossier dans IndexedDB. Au démarrage suivant, le carnet est rouvert si l’autorisation est encore accordée ; sinon un bouton **Autoriser le dossier** apparaît. Le code ne contourne pas les autorisations du système.
+- **Changer de dossier** ouvre un autre carnet, sans transférer ni fusionner le précédent. Terminer l’édition avant de changer. Revenir au premier dossier retrouve ses données.
+- Pour déplacer ou copier un carnet : Télécharger une copie, ouvrir le nouveau dossier, puis Importer une sauvegarde. On peut aussi copier carnet-histoire.json avec l’explorateur de fichiers, application fermée.
+- **Réautoriser / rouvrir** recharge le fichier, notamment après une modification externe. Exporter sa copie avant de rouvrir si un conflit a été signalé.
 
-Conserver les exports hors du dossier du dépôt (par exemple Documents/Sauvegardes). Ne pas envoyer les sauvegardes personnelles sur GitHub. Il n’y a pas de synchronisation automatique entre appareils, navigateurs ou adresses du site. Effacer les données du navigateur, utiliser un mode privé ou changer l’adresse du site peut faire perdre l’accès au carnet local. La demande de stockage persistant dépend du navigateur et ne remplace pas les exports.
+## Sauvegarde
 
-## Publier sur GitHub Pages
+Les fiches valides sont sauvegardées automatiquement après une seconde sans saisie. Les champs obligatoires incomplets ou les dates invalides bloquent la sauvegarde et affichent un message. **Sauvegarder et fermer** enregistre immédiatement la fiche ; **Sauvegarder** en haut enregistre tout le carnet. Suppressions et imports sont écrits immédiatement.
 
-1. Créer un dépôt GitHub vide, par exemple `carnet-histoire`. Avec GitHub Free, choisir un dépôt public pour utiliser Pages. Le code et le site seront publics ; les fiches locales ne sont pas dans le dépôt.
-2. Avec GitHub Desktop : **File → Add local repository**, choisir ce dossier, enregistrer toutes les modifications avec un commit puis **Publish repository**. Ou utiliser les commandes ci-dessous après avoir installé Git et vous être connecté à GitHub.
-3. Dans le dépôt GitHub : **Settings → Pages → Build and deployment → Source → GitHub Actions**.
-4. Le workflow `.github/workflows/pages.yml` compile et publie le site lors d’un push sur `main` ou `master`. Si nécessaire, ouvrir **Actions → Publier le carnet sur GitHub Pages → Run workflow** après avoir activé Pages.
-5. Attendre la réussite du workflow puis ouvrir le lien affiché dans **Settings → Pages**. L’adresse habituelle est `https://VOTRE-PSEUDO.github.io/carnet-histoire/`.
+**Fermer** ferme le formulaire : cela n’annule pas les modifications déjà sauvegardées automatiquement. Une fermeture ou un rechargement pendant une saisie non validée peut perdre les dernières modifications ; un avertissement est demandé au navigateur lorsqu’une fiche est ouverte. La sauvegarde ne continue pas quand la page est fermée.
 
-```powershell
-git add .
-git commit -m "Stockage local et publication GitHub Pages"
-git remote add origin https://github.com/VOTRE-PSEUDO/carnet-histoire.git
-git push -u origin HEAD:main
-```
+Les écritures sont sérialisées et confirmées après fermeture réussie du flux de fichier. Une erreur d’accès ou un manque d’espace est affiché et n’est jamais présenté comme une réussite. Avant chaque écriture, le fichier est comparé à la version chargée : une modification externe détectée bloque l’écrasement. Web Locks sérialise les écritures entre onglets de la même origine ; ce contrôle ne remplace pas un verrou système contre tous les logiciels externes.
 
-Remplacer VOTRE-PSEUDO et carnet-histoire par vos valeurs. Si `origin` existe déjà, vérifier `git remote -v` puis utiliser le dépôt voulu ; ne pas remplacer un dépôt existant sans vérifier. Ne pas exécuter deux méthodes de création de dépôt à la fois : avec GitHub Desktop, vous pouvez laisser **Publish repository** créer le dépôt au lieu de le créer au préalable.
+Le fichier est limité à 100 Mo, pour rester compatible avec l’import. Les photos JPG/PNG/WebP sont limitées à 5 Mo chacune. Garder régulièrement une copie indépendante : le fichier courant ne constitue pas un historique des versions.
 
-Le chemin relatif des ressources fonctionne pour un dépôt projet, un site à la racine ou un domaine personnalisé. Aucun secret GitHub à créer : le workflow utilise les autorisations standard de GitHub Actions.
+## Compatibilité réelle
 
-## Développement
+Le choix et la mémorisation d’un dossier utilisent File System Access, disponible sur certains navigateurs, principalement Chromium sur ordinateur, en HTTPS ou localhost. Le navigateur mémorise un accès autorisé, pas un chemin absolu arbitraire. Il peut demander de réautoriser cet accès après une fermeture.
 
-Node.js 24 recommandé.
+Sur les navigateurs non compatibles, notamment de nombreux navigateurs mobiles, l’application utilise IndexedDB et propose le téléchargement/import de fichiers. Elle affiche explicitement qu’un dossier ne peut pas être choisi. Pour garantir l’accès persistant à un dossier sur tous les téléphones comme une application native, une version Android/iOS serait nécessaire.
 
-```powershell
-npm ci
-npm run dev
-npm test
-npm run build
-npm run preview
-```
+Effacer les données du navigateur oublie le dossier mémorisé mais ne supprime pas le fichier dans votre dossier. Changer d’adresse du site ou de navigateur nécessite de choisir le dossier à nouveau. Si le dossier est synchronisé par un logiciel tiers, la synchronisation est gérée par ce logiciel.
 
-`dist` est le site compilé. Il faut le servir en HTTP(S), pas ouvrir `index.html` par double-clic. Les sauvegardes locales fonctionnent sans appeler un serveur. Cette version ne garantit pas la réouverture hors connexion : le téléchargement initial de l’application nécessite Internet. L’installation sur l’écran d’accueil dépend du navigateur.
+## Publication et développement
 
-## Ancienne version ChatGPT
+Node.js 24 : `npm ci`, `npm test`, `npm run build`, `npm run dev`. GitHub Pages publie `dist` via le workflow fourni. Aucune clé API ni variable de connexion n’est nécessaire.
 
-La modification locale ne désactive pas le site déjà publié. Il reste privé tant que vous ne modifiez pas ses autorisations. Les données de cette ancienne version ne sont pas migrées automatiquement, car elles sont sur son serveur et son domaine. Si vous avez déjà saisi des fiches, récupérer leur export (photos comprises) avant de supprimer l’ancien hébergement. Le dépôt Git conserve l’historique de l’ancienne implémentation ; la version actuelle ne l’utilise plus.
+Le chargement initial du site requiert Internet ; cette version ne garantit pas une réouverture hors ligne. Les écritures dans le dossier sont locales. L’historique Git conserve les anciennes versions ; elles ne font pas partie du site compilé actuel.
 
-## Vérifications
+## Sécurité et validation
 
-`npm test` vérifie la persistance IndexedDB avec un moteur de test, la création, la modification, les photos embarquées, la relecture, les imports, le rejet des sauvegardes invalides et la suppression. `npm run build` vérifie TypeScript et produit le site statique. La publication réelle nécessite votre dépôt GitHub ; aucun dépôt n’a été créé ni publié automatiquement.
+Aucun transfert applicatif distant ; politique CSP bloquant les connexions et scripts externes. Les imports sont validés, les textes rendus par React, les images SVG/HTML et URL externes refusées. La base et les fichiers ne sont pas chiffrés par l’application. Protéger l’appareil et le compte GitHub et activer HTTPS.
 
-Documentation : https://docs.github.com/fr/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
-
-## Sécurité et limites
-
-Les fiches ne sont pas transmises à un serveur et aucun compte n’est demandé. Le bouton **Enregistrer** valide une fiche et l’écrit dans IndexedDB. **Sauvegarder dans un fichier** télécharge le carnet complet avec les photos. La saisie non validée n’est pas automatiquement enregistrée.
-
-Le site compilé limite les scripts à sa propre origine et bloque les connexions applicatives, objets et cadres externes via une politique CSP. Les notes sont affichées comme du texte par React. Les imports sont validés avant une écriture atomique ; seules des photos embarquées JPG/PNG/WebP sont acceptées, sans HTML ni SVG. Ces protections réduisent les risques, sans garantir une sécurité absolue.
-
-Les fichiers JSON et la base locale ne sont pas chiffrés par l’application. Une personne ayant accès au même profil de navigateur peut lire le carnet. Les applications sous le même domaine GitHub Pages partagent une origine : les noms de bases par chemin évitent les collisions, mais ne constituent pas une isolation de sécurité. Héberger le carnet sous un domaine dédié si d’autres sites non fiables partagent votre domaine.
-
-Avant publication : activer **Enforce HTTPS** dans GitHub Pages et protéger le compte GitHub avec l’authentification à deux facteurs (cela concerne l’administrateur, pas les utilisateurs du carnet). Maintenir navigateur et dépendances à jour. Un compte d’hébergement compromis ou une extension malveillante peut contourner les protections de l’application. La configuration de l’hébergement n’a pas été vérifiée : aucun dépôt GitHub n’a encore été fourni.
-
-Vérification du 9 septembre 2026 : les anciennes dépendances serveur inutilisées ont été retirées, Vite mis à jour vers 8.2.2 et les correctifs compatibles appliqués. `npm audit fix` a terminé avec **0 vulnérabilité connue** sur 306 paquets audités. Ce résultat est daté, ne couvre pas les failles inconnues et ne constitue pas un audit d’intrusion. La politique CSP a été ajoutée au build ; son comportement dans les navigateurs et la configuration HTTPS réelle restent à contrôler lors de la publication.
+Les tests couvrent le stockage navigateur, les imports invalides, les changements de dossier, l’isolement entre carnets, les photos, les modifications externes, les écritures refusées et les échecs disque à l’aide de fichiers simulés. La compilation TypeScript/Vite est vérifiée. Le sélecteur natif, la sérialisation réelle des accès aux dossiers par le navigateur et la réautorisation après redémarrage restent à vérifier sur les appareils cibles.
