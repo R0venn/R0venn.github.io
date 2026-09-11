@@ -39,3 +39,32 @@ test('Reject active and remote photo content in backups',()=>{
  assert.equal(Object.hasOwn(result.records[0],'__proto__'),false);
  assert.equal({}.polluted,undefined);
 });
+
+
+test('Local folders: switching, complete writes, conflicts and failed writes',async()=>{
+ const vault=await import('../lib/vault-storage.ts');
+ function folder(name){
+  let content=null,permission='granted',fail=false;
+  return {name,get content(){return content},set content(value){content=value},set permission(value){permission=value},set fail(value){fail=value},
+   async queryPermission(){return permission},
+   async getFileHandle(filename,options={}){assert.equal(filename,'carnet-histoire.json');if(content===null&&!options.create)throw new DOMException('Missing','NotFoundError');if(content===null&&options.create)content='';return {
+    async getFile(){return new Blob([content||''])},
+    async createWritable(){let pending;return {async write(value){if(fail)throw new Error('Disk full');pending=value},async close(){content=pending},async abort(){}}}
+   }}
+  };
+ }
+ const a=folder('A'),b=folder('B');
+ await vault.openDirectory(a,false);assert.deepEqual(await vault.readRecords(),[]);
+ await vault.saveRecord(item);assert.equal(JSON.parse(a.content).records[0].photo,item.photo);
+ await vault.openDirectory(b,false);assert.deepEqual(await vault.readRecords(),[]);
+ await vault.saveRecord({...item,name:'Dans B'});assert.equal(JSON.parse(a.content).records[0].name,'Test');
+ await vault.openDirectory(a,false);assert.equal((await vault.readRecords())[0].name,'Test');
+ a.fail=true;const before=a.content;await assert.rejects(vault.saveRecord({...item,name:'Ne pas écrire'}),/Disk full/);assert.equal(a.content,before);assert.equal((await vault.readRecords())[0].name,'Test');a.fail=false;
+ a.permission='denied';await assert.rejects(vault.saveAll(),/expiré/);a.permission='granted';
+ a.content=JSON.stringify({format:'carnet-histoire',version:1,records:[{...item,name:'Autre logiciel'}]});
+ await assert.rejects(vault.saveRecord({...item,name:'Écrasement interdit'}),/modifié ailleurs/);assert.equal(JSON.parse(a.content).records[0].name,'Autre logiciel');
+ await vault.openDirectory(a,false);await vault.deleteRecord(item.id);assert.deepEqual(JSON.parse(a.content).records,[]);
+ const invalid=folder('Invalide');invalid.content='{"format":"wrong"}';await assert.rejects(vault.openDirectory(invalid,false),/invalide/);assert.deepEqual(await vault.readRecords(),[]);
+ await vault.importRecords([item]);await vault.saveAll();assert.equal(JSON.parse(a.content).records.length,1);
+});
+
